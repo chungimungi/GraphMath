@@ -1,7 +1,6 @@
 # GraphMath
 
-GraphMath using a  Graph AutoEncoder (GAE) to process and analyze mathematical problems. It leverages the NuminaMath-CoT dataset and employs advanced graph-based architectures to understand and predict solution characteristics for mathematical problems.
-
+GraphMath using a  Graph AutoEncoder (GAE) to process and analyze mathematical problems. The NuminaMath-CoT dataset is used for both training and testing.
 ## Features
 
 - Utilizes the NuminaMath-CoT dataset for training and testing
