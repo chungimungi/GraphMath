@@ -13,6 +13,6 @@ GraphMath using a  Graph AutoEncoder (GAE) to process and analyze mathematical p
 Clone the repository and install the required packages:
 
 ```bash
-git clone https://github.com/yourusername/graphmath.git
+git clone [https://github.com/yourusername/graphmath.git](https://github.com/chungimungi/GraphMath.git)
 cd graphmath
 pip install -r requirements.txt
