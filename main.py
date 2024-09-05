@@ -7,8 +7,8 @@ from torch_geometric.data import Data, DataLoader
 from tqdm import tqdm
 import torchinfo
 import matplotlib.pyplot as plt
+import torch.nn as nn
 
-device = torch.device('cuda:5' if torch.cuda.is_available() else 'cpu')
 
 print("Loading dataset...")
 dataset = load_dataset('AI-MO/NuminaMath-CoT')
@@ -75,8 +75,8 @@ test_data_objects = create_data_objects(test_graphs, test_solutions)
 print(f"Number of valid test samples: {len(test_data_objects)}")
 
 if len(train_data_objects) > 0 and len(test_data_objects) > 0:
-    train_loader = DataLoader(train_data_objects, batch_size=4, shuffle=True)
-    test_loader = DataLoader(test_data_objects, batch_size=4, shuffle=False)
+    train_loader = DataLoader(train_data_objects, batch_size=16, shuffle=True)
+    test_loader = DataLoader(test_data_objects, batch_size=16, shuffle=False)
 
     class MathGAE(torch.nn.Module):
         def __init__(self, num_node_features, hidden_channels=4096, num_layers=12):
@@ -163,8 +163,12 @@ if len(train_data_objects) > 0 and len(test_data_objects) > 0:
             z = F.dropout(z, p=0.5, training=self.training)
             return self.final_lin(z)
 
-    hidden_channels = 4096
-    model = MathGAE(num_node_features=3, hidden_channels=hidden_channels, num_layers=12).to(device)
+    hidden_channels = 2048
+    model = MathGAE(num_node_features=3, hidden_channels=hidden_channels, num_layers=12)
+    device = torch.device("cuda")
+    model = model.to(device)
+    model = torch.nn.DataParallel(model)
+
     torchinfo.summary(model)
     gae = GAE(model)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001, weight_decay=5e-5)
@@ -175,9 +179,15 @@ if len(train_data_objects) > 0 and len(test_data_objects) > 0:
         for data in tqdm(train_loader, desc="Training", leave=False):
             data = data.to(device)
             optimizer.zero_grad()
-            z, batch = model.encode(data.x, data.edge_index, data.batch)
-            loss = gae.recon_loss(z, data.edge_index)
-            out = model.regress(z, batch)
+            z, batch = model.module.encode(data.x, data.edge_index, data.batch)
+            
+            # Filter out invalid edges
+            edge_index = data.edge_index
+            valid_mask = (edge_index[0] < z.size(0)) & (edge_index[1] < z.size(0))
+            edge_index = edge_index[:, valid_mask]
+            
+            loss = gae.recon_loss(z, edge_index)
+            out = model.module.regress(z, batch)
             loss += F.mse_loss(out, data.y.view(-1, 1))
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
@@ -192,8 +202,8 @@ if len(train_data_objects) > 0 and len(test_data_objects) > 0:
         total_correct = 0
         for data in tqdm(loader, desc="Evaluating", leave=False):
             data = data.to(device)
-            z, batch = model.encode(data.x, data.edge_index, data.batch)
-            out = model.regress(z, batch)
+            z, batch = model.module.encode(data.x, data.edge_index, data.batch)
+            out = model.module.regress(z, batch)
             total_error += F.l1_loss(out, data.y.view(-1, 1), reduction='sum').item()
             total_correct += ((out.round() == data.y.view(-1, 1)).sum().item())
         accuracy = total_correct / len(loader.dataset)
@@ -206,7 +216,7 @@ if len(train_data_objects) > 0 and len(test_data_objects) > 0:
         test_accuracies = []
 
         print("Starting training...")
-        for epoch in tqdm(range(1, 21), desc="Epochs"):
+        for epoch in tqdm(range(1, 4), desc="Epochs"):
             loss = train()
             train_mae, train_accuracy = test(train_loader)
             test_mae, test_accuracy = test(test_loader)
