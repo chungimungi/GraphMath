@@ -4,7 +4,6 @@ GraphMath using a  Graph AutoEncoder (GAE) to process and analyze mathematical p
 ## Features
 
 - Utilizes the NuminaMath-CoT dataset for training and testing
-- Implements a Graph Autoencoder (GAE) with GCN and GAT layers
 - Converts textual math problems into graph representations
 - Predicts solution length using a combination of graph encoding and regression
 
