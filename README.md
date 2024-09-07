@@ -15,4 +15,3 @@ Clone the repository and install the required packages:
 ```bash
 git clone https://github.com/chungimungi/GraphMath.git
 cd GraphMath
-pip install -r requirements.txt
